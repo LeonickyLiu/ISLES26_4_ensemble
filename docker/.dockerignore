@@ -1,0 +1,8 @@
+.git
+.gitignore
+model
+test
+*.tar
+*.tar.gz
+__pycache__
+*.pyc

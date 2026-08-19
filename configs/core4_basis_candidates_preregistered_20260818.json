@@ -1,0 +1,62 @@
+{
+  "protocol": {
+    "name": "preregistered_core4_basis_search_20260818",
+    "objective": "Find a robust four-model binary-mask basis without lesion-rescue rules.",
+    "primary_mode": "pp_s300_c065",
+    "selection": "Five-fold cross-fitted average per-case rank over Dice, lesion F1, LCD, and AVD.",
+    "guardrails": [
+      "Candidate list is frozen before execution.",
+      "Only pp_s300_c065 participates in stage-1 selection.",
+      "Other post-processing modes are descriptive and cannot nominate a new weight candidate.",
+      "A replacement must be directionally stable across at least four of five folds or materially improve cross-fitted rank without a large regression in any metric.",
+      "No sanity-check cases are used for selection."
+    ]
+  },
+  "selected_configs": [
+    {
+      "screen_reason": "current_ici10_anchor",
+      "weights": {"resencm": 0.300000, "dtk10": 0.300000, "msl": 0.300000, "ici": 0.100000},
+      "threshold": 0.4250
+    },
+    {
+      "screen_reason": "current_ici10_threshold_neighbor",
+      "weights": {"resencm": 0.300000, "dtk10": 0.300000, "msl": 0.300000, "ici": 0.100000},
+      "threshold": 0.4375
+    },
+    {
+      "screen_reason": "symmetric_ici15",
+      "weights": {"resencm": 0.283333, "dtk10": 0.283333, "msl": 0.283334, "ici": 0.150000},
+      "threshold": 0.4250
+    },
+    {
+      "screen_reason": "symmetric_ici15_threshold_neighbor",
+      "weights": {"resencm": 0.283333, "dtk10": 0.283333, "msl": 0.283334, "ici": 0.150000},
+      "threshold": 0.4375
+    },
+    {
+      "screen_reason": "symmetric_ici20",
+      "weights": {"resencm": 0.266667, "dtk10": 0.266667, "msl": 0.266666, "ici": 0.200000},
+      "threshold": 0.4250
+    },
+    {
+      "screen_reason": "symmetric_ici20_threshold_neighbor",
+      "weights": {"resencm": 0.266667, "dtk10": 0.266667, "msl": 0.266666, "ici": 0.200000},
+      "threshold": 0.4375
+    },
+    {
+      "screen_reason": "equal4_anchor",
+      "weights": {"resencm": 0.250000, "dtk10": 0.250000, "msl": 0.250000, "ici": 0.250000},
+      "threshold": 0.4375
+    },
+    {
+      "screen_reason": "current3_ratio_ici10",
+      "weights": {"resencm": 0.337500, "dtk10": 0.337500, "msl": 0.225000, "ici": 0.100000},
+      "threshold": 0.4250
+    },
+    {
+      "screen_reason": "current3_ratio_ici15",
+      "weights": {"resencm": 0.318750, "dtk10": 0.318750, "msl": 0.212500, "ici": 0.150000},
+      "threshold": 0.4250
+    }
+  ]
+}

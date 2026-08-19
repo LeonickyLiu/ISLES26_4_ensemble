@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# IDE / operating system
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Medical images, predictions, checkpoints and archives
+*.nii
+*.nii.gz
+*.mha
+*.mhd
+*.nrrd
+*.npz
+*.pkl
+*.pth
+*.pt
+*.ckpt
+*.tar
+*.tar.gz
+*.zip
+
+# nnU-Net and experiment outputs
+/data/
+/model/
+/weights/
+/nnUNet_raw/
+/nnUNet_preprocessed/
+/nnUNet_results/
+/ensemble_results/
+/logs/
+/test/input/
+/test/output/
+
+# Secrets / local configuration
+.env
+.env.*
+*.pem
+*.key
+id_rsa*

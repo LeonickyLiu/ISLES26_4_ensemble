@@ -1,0 +1,35 @@
+{
+  "name": "isles26_c09_hybrid_final_20260819",
+  "folds_by_model": {
+    "resencm": [0, 1, 2, 3, 4],
+    "dtk10": [0, 1, 2, 3, 4],
+    "msl": [0, 1, 2, 3, 4],
+    "ici": [0, 1, 2, 3, 4]
+  },
+  "segmentation": {
+    "weights": {
+      "resencm": 0.31875,
+      "dtk10": 0.31875,
+      "msl": 0.2125,
+      "ici": 0.15
+    },
+    "threshold": 0.425,
+    "postprocessing": {
+      "connectivity": 26,
+      "minimum_volume_mm3": 300.0,
+      "peak_probability": 0.65,
+      "keep_rule": "volume_gte_minimum_or_peak_gte_threshold"
+    }
+  },
+  "probability_map": {
+    "weights": {
+      "resencm": 0.375,
+      "dtk10": 0.4,
+      "msl": 0.225,
+      "ici": 0.0
+    },
+    "dtype": "float32",
+    "range": [0.0, 1.0],
+    "postprocessing": "none"
+  }
+}

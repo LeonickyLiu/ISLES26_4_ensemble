@@ -1,0 +1,35 @@
+{
+  "protocol": {
+    "name": "preregistered_core4_postprocess_refine_c09_20260819",
+    "objective": "Conservatively refine connected-component post-processing after freezing the c09 four-model basis.",
+    "fixed_weight_candidate": "c09",
+    "fixed_threshold": 0.425,
+    "postprocess_grid": {
+      "small_limit_mm3": [100, 150, 200, 250, 300],
+      "max_confidence": [0.64, 0.65, 0.66]
+    },
+    "selection": "Five-fold cross-fitted average per-case rank over Dice, lesion F1, LCD, and AVD.",
+    "guardrails": [
+      "Candidate grid is frozen before execution.",
+      "The c09 weights and threshold are fixed during this stage.",
+      "A replacement for pp_s300_c065 must improve composite rank on at least four of five folds.",
+      "Mean Dice or lesion F1 may not decrease by more than 0.0005.",
+      "Mean LCD may not worsen by more than 0.005 and mean AVD may not worsen by more than 0.01 ml.",
+      "Missed cases may not increase.",
+      "If no candidate passes every guardrail, retain pp_s300_c065.",
+      "No sanity-check cases are used for selection."
+    ]
+  },
+  "selected_configs": [
+    {
+      "screen_reason": "current_ici10_control",
+      "weights": {"resencm": 0.300000, "dtk10": 0.300000, "msl": 0.300000, "ici": 0.100000},
+      "threshold": 0.4250
+    },
+    {
+      "screen_reason": "frozen_c09_basis",
+      "weights": {"resencm": 0.318750, "dtk10": 0.318750, "msl": 0.212500, "ici": 0.150000},
+      "threshold": 0.4250
+    }
+  ]
+}
