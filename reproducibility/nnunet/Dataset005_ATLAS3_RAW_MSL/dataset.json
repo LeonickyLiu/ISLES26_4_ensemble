@@ -1,0 +1,16 @@
+{
+  "channel_names": {
+    "0": "T1w"
+  },
+  "labels": {
+    "background": 0,
+    "tiny_lesion_lt100": 1,
+    "small_lesion_100_999": 2,
+    "medium_lesion_1000_9999": 3,
+    "large_lesion_ge10000": 4
+  },
+  "numTraining": 1453,
+  "file_ending": ".nii.gz",
+  "name": "ATLAS3_RAW",
+  "description": "ATLAS3 raw space brain T1w images with lesion masks"
+}

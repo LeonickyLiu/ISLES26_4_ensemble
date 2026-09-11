@@ -1,0 +1,93 @@
+{
+  "candidates": {
+    "r0.3333_d0.3333_m0.3333": {
+      "better_cases": 0,
+      "fold_means": {
+        "0": 0.7703006711857673,
+        "1": 0.7751086173864552,
+        "2": 0.7315149155609586,
+        "3": 0.7663859535936653,
+        "4": 0.7537307064368094
+      },
+      "mean_delta_vs_baseline": 0.0,
+      "mean_pr_auc": 0.7594072779157559,
+      "median_pr_auc": 0.8815790078673637,
+      "reason": "current_equal_baseline",
+      "ties": 1453,
+      "weights": {
+        "dtk10": 0.3333333333333333,
+        "msl": 0.3333333333333333,
+        "resencm": 0.3333333333333333
+      },
+      "worse_cases": 0
+    },
+    "r0.3500_d0.4000_m0.2500": {
+      "better_cases": 1074,
+      "fold_means": {
+        "0": 0.7725609899790321,
+        "1": 0.7765503618100185,
+        "2": 0.7335521367188995,
+        "3": 0.7675775504398281,
+        "4": 0.7549274822716098
+      },
+      "mean_delta_vs_baseline": 0.0016261251414570578,
+      "mean_pr_auc": 0.761033403057213,
+      "median_pr_auc": 0.8825712325148789,
+      "reason": "completed_local_balanced_rank_winner",
+      "ties": 7,
+      "weights": {
+        "dtk10": 0.4,
+        "msl": 0.25,
+        "resencm": 0.35
+      },
+      "worse_cases": 372
+    },
+    "r0.3750_d0.3750_m0.2500": {
+      "better_cases": 1064,
+      "fold_means": {
+        "0": 0.7719553833605983,
+        "1": 0.7763475587952156,
+        "2": 0.7334286978847702,
+        "3": 0.7673957699462967,
+        "4": 0.7548009582421353
+      },
+      "mean_delta_vs_baseline": 0.0013779653233736166,
+      "mean_pr_auc": 0.7607852432391297,
+      "median_pr_auc": 0.8823882727120428,
+      "reason": "five_metric_strict_candidate",
+      "ties": 7,
+      "weights": {
+        "dtk10": 0.375,
+        "msl": 0.25,
+        "resencm": 0.375
+      },
+      "worse_cases": 382
+    },
+    "r0.3750_d0.4000_m0.2250": {
+      "better_cases": 1057,
+      "fold_means": {
+        "0": 0.7726996913913369,
+        "1": 0.7768311443285845,
+        "2": 0.7340973406634554,
+        "3": 0.7677655412806381,
+        "4": 0.7553263486980472
+      },
+      "mean_delta_vs_baseline": 0.0019364574052223422,
+      "mean_pr_auc": 0.7613437353209783,
+      "median_pr_auc": 0.8828933116753915,
+      "reason": "crossfold_and_PR_AUC_candidate",
+      "ties": 6,
+      "weights": {
+        "dtk10": 0.4,
+        "msl": 0.225,
+        "resencm": 0.375
+      },
+      "worse_cases": 390
+    }
+  },
+  "protocol": {
+    "baseline": "r0.3333_d0.3333_m0.3333",
+    "n_cases": 1453,
+    "status": "exact_full_volume_current_official_compute_pr_auc"
+  }
+}

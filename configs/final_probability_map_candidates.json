@@ -1,0 +1,9 @@
+{
+  "selection_note": "Final four soft-map candidates after completed 75-case local official evaluation.",
+  "selected_configs": [
+    {"weights": {"resencm": 0.3333333333333333, "dtk10": 0.3333333333333333, "msl": 0.3333333333333333}, "threshold": 0.35, "screen_reason": "current_equal_baseline"},
+    {"weights": {"resencm": 0.375, "dtk10": 0.375, "msl": 0.25}, "threshold": 0.35, "screen_reason": "five_metric_strict_candidate"},
+    {"weights": {"resencm": 0.375, "dtk10": 0.4, "msl": 0.225}, "threshold": 0.35, "screen_reason": "crossfold_and_PR_AUC_candidate"},
+    {"weights": {"resencm": 0.35, "dtk10": 0.4, "msl": 0.25}, "threshold": 0.35, "screen_reason": "completed_local_balanced_rank_winner"}
+  ]
+}

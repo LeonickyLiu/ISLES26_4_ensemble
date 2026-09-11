@@ -23,10 +23,13 @@ machine-readable copy of the calibration is in
 configs/                  frozen search and final calibration configurations
 docker/                   Grand Challenge invoke API, inference, build/test tools
 evaluation/               five-fold OOF fusion and post-processing evaluation
+reproducibility/          frozen nnU-Net plans, fingerprint and five-fold split
+results/                  aggregate OOF search summaries (no per-case data)
 training/data/            dataset conversion and MSL target construction
 training/jobs/            fold training/resume scripts
 training/nnunet_extensions/
                           custom DTK10 and ICI nnU-Net training components
+requirements-training.txt exact training environment used for the final models
 ```
 
 ## Model families
@@ -54,6 +57,11 @@ Set `ISLES26_ROOT` to a work directory containing `nnUNet_raw`,
 `NNUNET_TRAIN_BIN` (and, where relevant, `NNUNET_PREDICT_BIN`) so no user-specific
 paths are required.
 
+For a clean reproduction from the organizer-provided corrected training data,
+including environment creation, exact preprocessing metadata and all 20 training
+runs, follow [`training/README.md`](training/README.md). The repository freezes
+the exact five-fold split and plans used for the submitted models.
+
 ## Evaluation protocol
 
 Fusion weights and post-processing were selected only with five-fold
@@ -70,7 +78,9 @@ evaluated separately with the official PR-AUC implementation.
 
 The evaluation scripts expect the official metric code in
 `$ISLES26_OFFICIAL_METRICS` (or `$ISLES26_ROOT/isles26_official_metrics`). This
-dependency is not vendored here.
+dependency is not vendored here. Evaluation used organizer repository commit
+`e589d022953f797bdc6acc1ce9701f793dab295a`. Aggregate OOF results and their
+scope are documented in [`results/README.md`](results/README.md).
 
 ## Package the model resource
 
