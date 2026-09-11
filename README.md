@@ -47,7 +47,69 @@ The full 20-checkpoint run is long. Use `FAMILIES` and `FOLDS` to distribute
 independent jobs across GPUs; examples and exact commands are in
 [`training/README.md`](training/README.md).
 
-### 3. Package the trained checkpoints
+### 3. Evaluate locally without Docker
+
+Local evaluation uses the five out-of-fold validation predictions saved by
+nnU-Net's `--npz` option. Each model family and fold must contain
+`fold_N/validation/case_*.npz`. The training driver creates these files. If the
+checkpoints exist but the validation arrays were deleted, regenerate them
+without retraining:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 ./training/generate_oof_predictions.sh
+```
+
+This validation-only pass is still computationally expensive, but it is much
+shorter than retraining 20 models. It does not require a Docker image. Install
+the evaluation dependency and obtain the organizer's metric implementation at
+the same commit used for the reported experiments:
+
+```bash
+python -m pip install -r requirements-evaluation.txt
+
+git clone https://github.com/ezequieldlrosa/isles26.git \
+  "$ISLES26_ROOT/isles26_official_metrics"
+git -C "$ISLES26_ROOT/isles26_official_metrics" checkout \
+  e589d022953f797bdc6acc1ce9701f793dab295a
+export ISLES26_OFFICIAL_METRICS="$ISLES26_ROOT/isles26_official_metrics"
+```
+
+Check that the ground truth and all four families' validation `.npz` files are
+aligned, then compute the final binary-mask metrics:
+
+```bash
+python evaluation/evaluate_core4_postprocess_refine_server.py \
+  --selected-json configs/core4_postprocess_refine_c09_20260819.json \
+  --out-dir "$ISLES26_ROOT/ensemble_results/final_oof_binary" \
+  --folds 0,1,2,3,4 --workers 4 --check-only
+
+python evaluation/evaluate_core4_postprocess_refine_server.py \
+  --selected-json configs/core4_postprocess_refine_c09_20260819.json \
+  --out-dir "$ISLES26_ROOT/ensemble_results/final_oof_binary" \
+  --folds 0,1,2,3,4 --workers 4
+```
+
+The binary evaluation writes `summary.csv` and `summary.json` under
+`final_oof_binary/`. The submitted row has weights
+`0.31875/0.31875/0.2125/0.15`, threshold `0.425`, and mode
+`pp_s300_c065`. The same command can be rerun after interruption; completed
+cases are recovered from `progress.jsonl`.
+
+Compute PR-AUC for the continuous three-model probability map separately:
+
+```bash
+python evaluation/evaluate_three_model_pr_auc_oof.py \
+  --candidates configs/final_probability_map_candidates.json \
+  --out-dir "$ISLES26_ROOT/ensemble_results/final_oof_pr_auc" \
+  --folds 0,1,2,3,4 --workers 4
+```
+
+Its aggregate metrics are written to `final_oof_pr_auc/summary.json`; the final
+probability-map weights are `0.375/0.400/0.225`. These are local 1,453-case
+five-fold OOF results. Scores on the organizer's hidden test set and the
+official leaderboard can only be obtained by submitting the Docker algorithm.
+
+### 4. Package the trained checkpoints
 
 ```bash
 python docker/prepare_model.py \
@@ -64,7 +126,7 @@ the separate Grand Challenge model upload:
 tar -czvf algorithmmodel.tar.gz -C "$ISLES26_ROOT/model" .
 ```
 
-### 4. Build and test the Docker container
+### 5. Build and test the Docker container
 
 Place one local test case in the following Grand Challenge-style layout:
 

@@ -1,9 +1,2 @@
-connected-components-3d
-monai
-nibabel
-numpy
-pandas
-scipy
-SimpleITK
-torch
-nnunetv2==2.8.0
+-r requirements-training.txt
+panoptica==2.1.4

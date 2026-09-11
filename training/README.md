@@ -64,6 +64,16 @@ Set `RESUME=1` to pass nnU-Net's `--c` flag when resuming existing runs.
 Validation softmax arrays are retained with `--npz` because they are required
 for the out-of-fold ensemble evaluation.
 
+If trained checkpoints are available but their validation `.npz` arrays were
+removed, regenerate all OOF probabilities without retraining:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 ./training/generate_oof_predictions.sh
+```
+
+This runs nnU-Net with `--val --npz` for every family and fold. `FAMILIES` and
+`FOLDS` can be used in the same way as for `train_all_folds.sh`.
+
 The four commands used by the driver are:
 
 ```text
@@ -83,9 +93,41 @@ The evaluation scripts were run against commit
 `e589d022953f797bdc6acc1ce9701f793dab295a` of the organizer metric repository:
 
 ```bash
+python -m pip install -r requirements-evaluation.txt
 git clone https://github.com/ezequieldlrosa/isles26.git \
   "$ISLES26_ROOT/isles26_official_metrics"
 git -C "$ISLES26_ROOT/isles26_official_metrics" checkout \
   e589d022953f797bdc6acc1ce9701f793dab295a
 export ISLES26_OFFICIAL_METRICS="$ISLES26_ROOT/isles26_official_metrics"
 ```
+
+After all folds have produced their validation `.npz` files, run the final
+binary-mask evaluation without Docker:
+
+```bash
+python evaluation/evaluate_core4_postprocess_refine_server.py \
+  --selected-json configs/core4_postprocess_refine_c09_20260819.json \
+  --out-dir "$ISLES26_ROOT/ensemble_results/final_oof_binary" \
+  --folds 0,1,2,3,4 --workers 4 --check-only
+
+python evaluation/evaluate_core4_postprocess_refine_server.py \
+  --selected-json configs/core4_postprocess_refine_c09_20260819.json \
+  --out-dir "$ISLES26_ROOT/ensemble_results/final_oof_binary" \
+  --folds 0,1,2,3,4 --workers 4
+```
+
+This produces `summary.csv` and `summary.json`. The final submitted binary row
+uses weights `0.31875/0.31875/0.2125/0.15`, threshold `0.425`, and
+`pp_s300_c065` post-processing. Evaluate the separately calibrated continuous
+probability map with:
+
+```bash
+python evaluation/evaluate_three_model_pr_auc_oof.py \
+  --candidates configs/final_probability_map_candidates.json \
+  --out-dir "$ISLES26_ROOT/ensemble_results/final_oof_pr_auc" \
+  --folds 0,1,2,3,4 --workers 4
+```
+
+The latter writes `summary.json`; select the `0.375/0.400/0.225`
+ResEncM/DTK10/MSL candidate. These local OOF results reproduce model selection,
+but hidden-test leaderboard results still require a Docker submission.
