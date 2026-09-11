@@ -120,8 +120,7 @@ TEST_OUTPUT_DIR=/path/to/test/output \
 ```
 
 The container implements the Grand Challenge `invoke` API and writes both
-`stroke-lesion-segmentation` and `lesion-probability-map` outputs. The generated
-Docker archive and model tarball must not be committed to Git.
+`stroke-lesion-segmentation` and `lesion-probability-map` outputs. 
 
 ## License
 
