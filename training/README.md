@@ -6,15 +6,23 @@ in total). Raw challenge data and trained checkpoints are not redistributed.
 ## 1. Environment
 
 The original training environment used Python 3.10.20, PyTorch 2.6.0 with
-CUDA 11.8, and nnU-Net v2.8.0. On a Linux CUDA host:
+CUDA 11.8, and nnU-Net v2.8.0. On a Linux CUDA host, create and activate the
+Conda environment named `isles`, then install the pinned pip dependencies:
 
 ```bash
-python3.10 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements-training.txt
+conda env create --file environment.yml
+conda activate isles
+python -m pip install --upgrade pip
+python -m pip install -r requirements-training.txt
 ./training/install_nnunet_extensions.sh
+
+which python
+python --version
 ```
+
+If `isles` already exists, skip `conda env create`, activate it, and rerun the
+two `pip` commands. All preparation, training, evaluation, and model-packaging
+commands below must be executed while this environment is active.
 
 ## 2. Data
 

@@ -18,12 +18,16 @@ or provide a compatible model resource containing those checkpoints.
 git clone https://github.com/LeonickyLiu/ISLES26_4_ensemble.git
 cd ISLES26_4_ensemble
 
-python3.10 -m venv .venv
-source .venv/bin/activate
+conda env create --file environment.yml
+conda activate isles
 python -m pip install --upgrade pip
 python -m pip install -r requirements-training.txt
 ./training/install_nnunet_extensions.sh
 ```
+
+If the `isles` environment already exists, activate it and rerun the two
+`pip` commands to synchronize the pinned requirements. Confirm that all later
+commands use this environment with `which python` and `python --version`.
 
 ### 2. Prepare the official data and train
 
@@ -123,6 +127,7 @@ training/data/            dataset conversion and MSL target construction
 training/jobs/            fold training/resume scripts
 training/nnunet_extensions/
                           custom DTK10 and ICI nnU-Net training components
+environment.yml           Conda environment named isles (Python and pip)
 requirements-training.txt exact training environment used for the final models
 ```
 
