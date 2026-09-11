@@ -5,6 +5,100 @@ Code used for the final ISLES'26 submission from team FORSIAT. The system is a
 folds. Dataset files, trained weights, validation predictions, and Docker image
 archives are intentionally excluded from this repository.
 
+## Quick start: clone and run
+
+The commands below target Linux. On Windows, run them in WSL2 with Docker
+Desktop's WSL integration enabled. A clone by itself cannot perform inference:
+obtain the official corrected training data and either train the 20 checkpoints
+or provide a compatible model resource containing those checkpoints.
+
+### 1. Clone and create the training environment
+
+```bash
+git clone https://github.com/LeonickyLiu/ISLES26_4_ensemble.git
+cd ISLES26_4_ensemble
+
+python3.10 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements-training.txt
+./training/install_nnunet_extensions.sh
+```
+
+### 2. Prepare the official data and train
+
+Use the organizer-provided training data including the 2026-07-28 corrections.
+Choose a work directory with enough space for nnU-Net preprocessing, validation
+probabilities, and checkpoints:
+
+```bash
+export ISLES26_ROOT=/path/to/isles26-work
+./training/prepare_data.sh /path/to/official/corrected/training-data
+
+# Trains four families x five folds serially on one visible GPU.
+CUDA_VISIBLE_DEVICES=0 ./training/train_all_folds.sh
+```
+
+The full 20-checkpoint run is long. Use `FAMILIES` and `FOLDS` to distribute
+independent jobs across GPUs; examples and exact commands are in
+[`training/README.md`](training/README.md).
+
+### 3. Package the trained checkpoints
+
+```bash
+python docker/prepare_model.py \
+  --results-root "$ISLES26_ROOT/nnUNet_results" \
+  --output-root "$ISLES26_ROOT/model"
+python docker/validate_model.py --model-root "$ISLES26_ROOT/model"
+```
+
+The resulting model directory must contain `ensemble_config.json`,
+`model_manifest.json`, and the four five-fold nnU-Net result trees. To create
+the separate Grand Challenge model upload:
+
+```bash
+tar -czvf algorithmmodel.tar.gz -C "$ISLES26_ROOT/model" .
+```
+
+### 4. Build and test the Docker container
+
+Place one local test case in the following Grand Challenge-style layout:
+
+```text
+test-input/interf0/
+├── inputs.json
+├── stroke-metadata.json
+└── images/t1-brain-mri/case.mha
+```
+
+`inputs.json` must declare the `t1-brain-mri` and `stroke-metadata` socket
+slugs:
+
+```json
+[
+  {"socket": {"slug": "t1-brain-mri"}},
+  {"socket": {"slug": "stroke-metadata"}}
+]
+```
+
+`stroke-metadata.json` may be `{}` for a local smoke test. Then run:
+
+```bash
+cd docker
+./do_build.sh
+
+MODEL_DIR="$ISLES26_ROOT/model" \
+TEST_INPUT_DIR=/absolute/path/to/test-input \
+./do_test_run.sh
+
+# After a successful test, create the container archive for upload.
+./do_save.sh
+```
+
+Outputs are collected under `docker/test/output/interf0/`. The final container
+writes both `stroke-lesion-segmentation` and `lesion-probability-map`. See the
+longer packaging and configuration notes below for Grand Challenge submission.
+
 ## Final inference configuration
 
 | Output | Models and family weights | Decision rule |
