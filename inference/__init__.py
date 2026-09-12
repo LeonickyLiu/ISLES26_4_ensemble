@@ -2,6 +2,7 @@
 
 from .ensemble import (
     MODEL_ORDER,
+    PROBABILITY_MODES,
     component_postprocess,
     initialize_predictors,
     load_calibration,
@@ -10,6 +11,7 @@ from .ensemble import (
 
 __all__ = [
     "MODEL_ORDER",
+    "PROBABILITY_MODES",
     "component_postprocess",
     "initialize_predictors",
     "load_calibration",

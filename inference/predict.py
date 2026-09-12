@@ -6,7 +6,12 @@ import argparse
 import os
 from pathlib import Path
 
-from inference.ensemble import initialize_predictors, load_calibration, predict_case
+from inference.ensemble import (
+    PROBABILITY_MODES,
+    initialize_predictors,
+    load_calibration,
+    predict_case,
+)
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -46,6 +51,15 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional directory for temporary nnU-Net probability files",
     )
+    parser.add_argument(
+        "--probability-mode",
+        choices=PROBABILITY_MODES,
+        default="dual",
+        help=(
+            "dual uses the submitted three-model probability-map calibration; "
+            "four-model reuses the unthresholded four-model segmentation fusion"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -67,6 +81,7 @@ def main() -> int:
         calibration,
         device,
         work_dir=args.work_dir,
+        probability_mode=args.probability_mode,
     )
     return 0
 

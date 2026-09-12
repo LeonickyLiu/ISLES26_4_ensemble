@@ -69,6 +69,16 @@ and the same family probability is accumulated into the applicable branches.
 The exact calibration is frozen in
 [`configs/final_output_calibration.json`](configs/final_output_calibration.json).
 
+### Optional four-model single-branch output
+
+The four-model segmentation fusion is itself a continuous probability map.
+When branch-specific fusion is not desired, the same unthresholded
+$p_{\mathrm{seg}}$ can be saved as the probability-map output, while its
+thresholded and post-processed version supplies the binary mask. This mode
+uses all four families for every reported metric and is available with
+`--probability-mode four-model`. The submitted dual-output calibration remains
+the default.
+
 ## Installation
 
 The reproduction commands target a Linux CUDA host. Clone the repository and
@@ -151,6 +161,18 @@ python -m inference.predict \
   --device cuda:0
 ```
 
+To use the same four-model fusion for both outputs instead of the submitted
+dual-output calibration, add:
+
+```bash
+python -m inference.predict \
+  --input-image /path/to/case.nii.gz \
+  --results-root "$ISLES26_ROOT/nnUNet_results" \
+  --output-dir /path/to/prediction \
+  --device cuda:0 \
+  --probability-mode four-model
+```
+
 The command writes:
 
 - `stroke_lesion_segmentation.nii.gz`: final post-processed binary mask.
@@ -208,6 +230,16 @@ python evaluation/evaluate_three_model_pr_auc_oof.py \
   --folds 0,1,2,3,4 --workers 4
 ```
 
+Evaluate the optional four-model probability map with the same official
+PR-AUC implementation:
+
+```bash
+python evaluation/evaluate_four_model_pr_auc_oof.py \
+  --config configs/final_output_calibration.json \
+  --out-dir "$ISLES26_ROOT/ensemble_results/final_oof_four_model_pr_auc" \
+  --folds 0,1,2,3,4 --workers 4
+```
+
 The binary evaluation writes `summary.csv` and `summary.json`; the PR-AUC
 evaluation writes `summary.json`. Completed binary cases are recorded in
 `progress.jsonl`, so that run can safely resume after interruption.
@@ -221,18 +253,27 @@ grid was evaluated. The sanity-check cases were not used for model selection.
 
 Final aggregate results over all 1,453 OOF cases are:
 
-| Output | Metric | Mean |
+| Configuration and output | Metric | Mean |
 |---|---|---:|
-| Binary mask | Dice | **0.666484** |
-| Binary mask | Lesion F1 | **0.616320** |
-| Binary mask | Lesion-count difference | **1.793531** |
-| Binary mask | Absolute-volume difference (mL) | **5.089944** |
-| Probability map | PR-AUC | **0.761344** |
+| Four-model binary mask | Dice | **0.666484** |
+| Four-model binary mask | Lesion F1 | **0.616320** |
+| Four-model binary mask | Lesion-count difference | **1.793531** |
+| Four-model binary mask | Absolute-volume difference (mL) | **5.089944** |
+| Submitted three-model probability map | PR-AUC | **0.761344** |
+| Optional four-model probability map | PR-AUC | **0.762594** |
 
 The final probability weights improved mean PR-AUC by `0.001936` over equal
-three-model weights on the same OOF cases. These are internal OOF validation
-results, not scores from a hidden test set. Frozen aggregate search summaries
-and scope notes are available in [`results/`](results/README.md).
+three-model weights on the same OOF cases. The unthresholded four-model fusion
+had a slightly higher mean PR-AUC (`0.762594` versus `0.761344`), so it is a
+valid single-branch alternative. The submitted three-model probability branch
+was retained because it achieved higher per-case PR-AUC in 866 of 1,453 cases
+(`59.6%`); the four-model map was higher in 582 cases, with 5 ties. This paired
+comparison does not by itself determine an official rank, which also depends
+on the other challenge submissions.
+
+These are internal OOF validation results, not scores from a hidden test set.
+Frozen aggregate search summaries and scope notes are available in
+[`results/`](results/README.md).
 
 ## Implementation map
 

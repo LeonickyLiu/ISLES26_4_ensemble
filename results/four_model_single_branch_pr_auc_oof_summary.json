@@ -1,0 +1,27 @@
+{
+  "configuration": "unthresholded final four-model binary-fusion weights",
+  "fold_means": {
+    "0": 0.7726699875489542,
+    "1": 0.7788440209747195,
+    "2": 0.7362225820511074,
+    "3": 0.7688995213830798,
+    "4": 0.756332636413611
+  },
+  "mean_pr_auc": 0.762593718938955,
+  "median_pr_auc": 0.882892575680035,
+  "metric": "official voxel-wise PR-AUC via utils.eval_utils.compute_pr_auc",
+  "n_cases": 1453,
+  "paired_vs_final_three_model_probability_map": {
+    "four_model_better_cases": 582,
+    "mean_delta_four_minus_three": 0.001249983617977,
+    "three_model_better_cases": 866,
+    "ties": 5
+  },
+  "standard_deviation": 0.27290622077125,
+  "weights": {
+    "dtk10": 0.31875,
+    "ici": 0.15,
+    "msl": 0.2125,
+    "resencm": 0.31875
+  }
+}

@@ -19,8 +19,18 @@ python -m inference.predict \
 The command writes:
 
 - `stroke_lesion_segmentation.nii.gz`: post-processed binary lesion mask.
-- `lesion_probability_map.nii.gz`: continuous three-family probability map.
+- `lesion_probability_map.nii.gz`: continuous probability map.
 
 Both outputs copy the input image geometry. The input must follow the same
 single-channel, skull-stripped T1 definition as the official ISLES'26 data used
 for training; nnU-Net performs its configured preprocessing internally.
+
+The default `--probability-mode dual` reproduces the submitted configuration:
+the binary mask uses all four families, while the probability map uses the
+separately calibrated three-model fusion. To use the same unthresholded
+four-model fusion as the probability map and therefore use all four families
+for every reported metric, append:
+
+```bash
+--probability-mode four-model
+```

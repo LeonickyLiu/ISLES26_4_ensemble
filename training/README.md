@@ -132,3 +132,17 @@ The latter writes `summary.json`; select the `0.375/0.400/0.225`
 ResEncM/DTK10/MSL candidate. These local OOF results reproduce the reported
 model-selection experiment; they do not estimate scores for an unseen hidden
 test set.
+
+To evaluate the optional single-branch configuration, where the same
+unthresholded four-model fusion provides the probability map as well as the
+thresholded binary mask, run:
+
+```bash
+python evaluation/evaluate_four_model_pr_auc_oof.py \
+  --config configs/final_output_calibration.json \
+  --out-dir "$ISLES26_ROOT/ensemble_results/final_oof_four_model_pr_auc" \
+  --folds 0,1,2,3,4 --workers 4
+```
+
+The recorded 1,453-case mean PR-AUC for this four-model probability map is
+`0.762594`.

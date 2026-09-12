@@ -22,6 +22,7 @@ from scipy import ndimage
 
 
 MODEL_ORDER = ("resencm", "dtk10", "msl", "ici")
+PROBABILITY_MODES = ("dual", "four-model")
 
 MODEL_LAYOUTS = {
     "resencm": (
@@ -246,19 +247,36 @@ def predict_case(
     calibration: Mapping[str, Any],
     device: torch.device,
     work_dir: str | Path | None = None,
+    probability_mode: str = "dual",
 ) -> tuple[Path, Path]:
-    """Run one T1 image and write the final mask and continuous probability map."""
+    """Run one T1 image and write a mask and continuous probability map.
+
+    ``dual`` reproduces the submitted branch-specific calibration: four model
+    families for the binary mask and three for the probability map.
+    ``four-model`` reuses the unthresholded four-model segmentation fusion as
+    the probability map, so one fusion supplies all reported metrics.
+    """
     input_image = Path(input_image).resolve()
     output_dir = Path(output_dir).resolve()
     if not input_image.is_file():
         raise FileNotFoundError(input_image)
     if set(predictors) != set(MODEL_ORDER):
         raise ValueError("Predictors must contain all four model families")
+    if probability_mode not in PROBABILITY_MODES:
+        raise ValueError(
+            f"probability_mode must be one of {PROBABILITY_MODES}, got "
+            f"{probability_mode!r}"
+        )
 
     reference = sitk.ReadImage(str(input_image))
     reference_shape = tuple(int(value) for value in sitk.GetArrayViewFromImage(reference).shape)
     segmentation_weights = calibration["segmentation"]["weights"]
-    probability_weights = calibration["probability_map"]["weights"]
+    probability_weights = (
+        calibration["probability_map"]["weights"]
+        if probability_mode == "dual"
+        else segmentation_weights
+    )
+    print(f"Probability-map mode: {probability_mode}")
 
     temporary_parent = None if work_dir is None else str(Path(work_dir).resolve())
     if temporary_parent is not None:
