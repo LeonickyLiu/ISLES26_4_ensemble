@@ -49,7 +49,7 @@ It first thresholds $p_{\mathrm{seg}}$ at `0.425`. For every 26-connected
 component $C$, the component is retained when either
 
 $$
-\operatorname{volume}(C)\geq300\;\mathrm{mm}^3
+\mathrm{Vol}(C)\geq300\;\mathrm{mm}^3
 \quad\text{or}\quad
 \max_{x\in C}p_{\mathrm{seg}}(x)\geq0.65.
 $$
