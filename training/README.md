@@ -21,7 +21,7 @@ python --version
 ```
 
 If `isles` already exists, skip `conda env create`, activate it, and rerun the
-two `pip` commands. All preparation, training, evaluation, and model-packaging
+two `pip` commands. All preparation, training, inference, and evaluation
 commands below must be executed while this environment is active.
 
 ## 2. Data
@@ -102,7 +102,7 @@ export ISLES26_OFFICIAL_METRICS="$ISLES26_ROOT/isles26_official_metrics"
 ```
 
 After all folds have produced their validation `.npz` files, run the final
-binary-mask evaluation without Docker:
+binary-mask evaluation:
 
 ```bash
 python evaluation/evaluate_core4_postprocess_refine_server.py \
@@ -129,5 +129,6 @@ python evaluation/evaluate_three_model_pr_auc_oof.py \
 ```
 
 The latter writes `summary.json`; select the `0.375/0.400/0.225`
-ResEncM/DTK10/MSL candidate. These local OOF results reproduce model selection,
-but hidden-test leaderboard results still require a Docker submission.
+ResEncM/DTK10/MSL candidate. These local OOF results reproduce the reported
+model-selection experiment; they do not estimate scores for an unseen hidden
+test set.

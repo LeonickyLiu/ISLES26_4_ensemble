@@ -698,13 +698,13 @@ def summarize(results: list[dict], candidates: list[dict]) -> dict:
                 "average_rank": float(average_rank[balanced_column]),
             },
             "pareto_front": [names[column] for column in pareto_columns],
-            "strict_improvements_vs_current3_docker": [
+            "strict_improvements_vs_current3_reference": [
                 names[column] for column in strict_columns
             ],
             "cross_fitted_by_fold": cross_fitted,
             "cross_fitted_overall": cross_fitted_summary,
         },
-        "paired_vs_current3_docker": paired_vs_reference,
+        "paired_vs_current3_reference": paired_vs_reference,
     }
 
 

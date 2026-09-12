@@ -1,18 +1,79 @@
 # ISLES'26 Four-Model Ensemble
 
-Code used for the final ISLES'26 submission from team FORSIAT. The system is a
-20-checkpoint ensemble: four nnU-Net model families, each trained with five
-folds. Dataset files, trained weights, validation predictions, and Docker image
-archives are intentionally excluded from this repository.
+This repository reproduces the lesion-segmentation algorithm developed by team
+**FORSIAT** for ISLES'26. The final system combines four complementary 3D
+nnU-Net families over five folds (20 checkpoints), then produces a binary
+lesion mask and a separately calibrated continuous probability map.
 
-## Quick start: clone and run
+The repository contains the complete data-conversion, training, inference, and
+out-of-fold evaluation code. Challenge data, trained checkpoints, and generated
+predictions are not redistributed.
 
-The commands below target Linux. On Windows, run them in WSL2 with Docker
-Desktop's WSL integration enabled. A clone by itself cannot perform inference:
-obtain the official corrected training data and either train the 20 checkpoints
-or provide a compatible model resource containing those checkpoints.
+## Method
 
-### 1. Clone and create the training environment
+### Four complementary model families
+
+All models take one skull-stripped T1-weighted MRI volume as input and use the
+same frozen five-fold split of 1,453 training cases.
+
+| Family | Dataset / plan | Training objective or target |
+|---|---|---|
+| **ResEncM** | Dataset004, `nnUNetResEncUNetMPlans` | Standard nnU-Net loss with a residual-encoder M configuration |
+| **DTK10** | Dataset004, `nnUNetPlans` | Dice + Top-K cross-entropy; the cross-entropy term concentrates on the hardest 10% of voxels |
+| **MSL** | Dataset005, `nnUNetPlans` | Multi-size lesion targets: each 26-connected lesion is assigned to `<100`, `100-999`, `1000-9999`, or `>=10000` voxels |
+| **ICI** | Dataset004, `nnUNetPlans` | Compound global, instance, and center supervision with weights `0.25/0.50/0.25` |
+
+Dataset005 uses the same images and folds as Dataset004. Only its targets are
+changed. At inference, the four MSL foreground-class probabilities are summed
+back into one lesion probability.
+
+The frozen 3D plans use 1 mm isotropic spacing, a `128 x 128 x 128` patch,
+batch size 2, and the original nnU-Net schedule of 1,000 epochs with 250
+iterations per epoch.
+
+### Five-fold prediction and dual-output fusion
+
+For family \(m\), its probability is the average of the five fold models:
+
+\[
+p_m(x)=\frac{1}{5}\sum_{f=0}^{4}p_{m,f}(x).
+\]
+
+The binary-mask branch fuses all four families:
+
+\[
+p_{seg}=0.31875p_{ResEncM}+0.31875p_{DTK10}
+       +0.2125p_{MSL}+0.15p_{ICI}.
+\]
+
+It first thresholds \(p_{seg}\) at `0.425`. For every 26-connected component
+\(C\), the component is retained when either
+
+\[
+\operatorname{volume}(C)\geq300\;\mathrm{mm}^3
+\quad\text{or}\quad
+\max_{x\in C}p_{seg}(x)\geq0.65.
+\]
+
+This removes small low-confidence false positives without discarding small
+high-confidence lesions.
+
+The continuous probability-map branch excludes ICI and uses:
+
+\[
+p_{prob}=0.375p_{ResEncM}+0.400p_{DTK10}+0.225p_{MSL}.
+\]
+
+`p_prob` is clipped to `[0, 1]` and saved as `float32`; no threshold or
+connected-component filtering is applied. Each family is inferred only once,
+and the same family probability is accumulated into the applicable branches.
+The exact calibration is frozen in
+[`configs/final_output_calibration.json`](configs/final_output_calibration.json).
+
+## Installation
+
+The reproduction commands target a Linux CUDA host. Clone the repository and
+create the pinned Conda environment named `isles`:
 
 ```bash
 git clone https://github.com/LeonickyLiu/ISLES26_4_ensemble.git
@@ -25,44 +86,94 @@ python -m pip install -r requirements-training.txt
 ./training/install_nnunet_extensions.sh
 ```
 
-If the `isles` environment already exists, activate it and rerun the two
-`pip` commands to synchronize the pinned requirements. Confirm that all later
-commands use this environment with `which python` and `python --version`.
+If the environment already exists, activate it and rerun the two `pip`
+commands. The original environment used Python 3.10.20, PyTorch 2.6.0 with
+CUDA 11.8, and nnU-Net v2.8.0.
 
-### 2. Prepare the official data and train
+## Prepare the data
 
 Use the organizer-provided training data including the 2026-07-28 corrections.
-Choose a work directory with enough space for nnU-Net preprocessing, validation
-probabilities, and checkpoints:
+Choose a work directory with enough space for the raw data, preprocessing,
+checkpoints, and validation probabilities:
 
 ```bash
 export ISLES26_ROOT=/path/to/isles26-work
 ./training/prepare_data.sh /path/to/official/corrected/training-data
+```
 
-# Trains four families x five folds serially on one visible GPU.
+The script performs four reproducible steps:
+
+1. Convert the released BIDS-like T1 images and lesion masks to Dataset004.
+2. Align a mask to its image grid with nearest-neighbor resampling when needed.
+3. Construct the four-class MSL targets as Dataset005.
+4. Install the frozen fingerprint, plans, and exact five-fold split, then run
+   nnU-Net preprocessing.
+
+The split SHA256 is
+`5b89628f3e4ecc196967578c6b3813fb9099063ffc6c4d4c3a8af348fc1fc2c7`.
+
+## Train the final ensemble
+
+Train all four families and all five folds serially on one visible GPU:
+
+```bash
 CUDA_VISIBLE_DEVICES=0 ./training/train_all_folds.sh
 ```
 
-The full 20-checkpoint run is long. Use `FAMILIES` and `FOLDS` to distribute
-independent jobs across GPUs; examples and exact commands are in
+The final trained algorithm is the collection of 20
+`checkpoint_final.pth` files under `$ISLES26_ROOT/nnUNet_results`; no additional
+weight merging is needed. Independent jobs can be distributed across GPUs:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 FAMILIES="resencm dtk10" FOLDS="0 1" \
+  ./training/train_all_folds.sh
+
+CUDA_VISIBLE_DEVICES=1 FAMILIES="msl ici" FOLDS="2 3 4" \
+  ./training/train_all_folds.sh
+```
+
+Use `RESUME=1` to resume existing nnU-Net runs. The driver keeps validation
+softmax arrays with `--npz`, because they are needed for out-of-fold ensemble
+evaluation. Exact family commands and expected output paths are documented in
 [`training/README.md`](training/README.md).
 
-### 3. Evaluate locally without Docker
+## Run inference
 
-Local evaluation uses the five out-of-fold validation predictions saved by
-nnU-Net's `--npz` option. Each model family and fold must contain
-`fold_N/validation/case_*.npz`. The training driver creates these files. If the
-checkpoints exist but the validation arrays were deleted, regenerate them
-without retraining:
+After all 20 checkpoints are available, run one T1 volume directly from the
+nnU-Net results tree:
+
+```bash
+conda activate isles
+
+python -m inference.predict \
+  --input-image /path/to/case.nii.gz \
+  --results-root "$ISLES26_ROOT/nnUNet_results" \
+  --output-dir /path/to/prediction \
+  --device cuda:0
+```
+
+The command writes:
+
+- `stroke_lesion_segmentation.nii.gz`: final post-processed binary mask.
+- `lesion_probability_map.nii.gz`: final continuous probability map.
+
+Both outputs preserve the input image geometry. The implementation is split
+between [`inference/ensemble.py`](inference/ensemble.py), which contains model
+loading, fusion and post-processing, and
+[`inference/predict.py`](inference/predict.py), which provides the command-line
+interface.
+
+## Reproduce the five-fold evaluation
+
+If the checkpoints exist but `fold_N/validation/case_*.npz` was removed,
+regenerate out-of-fold probabilities without retraining:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 ./training/generate_oof_predictions.sh
 ```
 
-This validation-only pass is still computationally expensive, but it is much
-shorter than retraining 20 models. It does not require a Docker image. Install
-the evaluation dependency and obtain the organizer's metric implementation at
-the same commit used for the reported experiments:
+Install the evaluation dependency and check out the exact organizer metric
+implementation used by the experiments:
 
 ```bash
 python -m pip install -r requirements-evaluation.txt
@@ -74,8 +185,8 @@ git -C "$ISLES26_ROOT/isles26_official_metrics" checkout \
 export ISLES26_OFFICIAL_METRICS="$ISLES26_ROOT/isles26_official_metrics"
 ```
 
-Check that the ground truth and all four families' validation `.npz` files are
-aligned, then compute the final binary-mask metrics:
+First validate that all ground-truth masks and four-family OOF probabilities
+are aligned, then compute the final binary metrics:
 
 ```bash
 python evaluation/evaluate_core4_postprocess_refine_server.py \
@@ -89,13 +200,7 @@ python evaluation/evaluate_core4_postprocess_refine_server.py \
   --folds 0,1,2,3,4 --workers 4
 ```
 
-The binary evaluation writes `summary.csv` and `summary.json` under
-`final_oof_binary/`. The submitted row has weights
-`0.31875/0.31875/0.2125/0.15`, threshold `0.425`, and mode
-`pp_s300_c065`. The same command can be rerun after interruption; completed
-cases are recovered from `progress.jsonl`.
-
-Compute PR-AUC for the continuous three-model probability map separately:
+Evaluate the continuous probability-map branch separately:
 
 ```bash
 python evaluation/evaluate_three_model_pr_auc_oof.py \
@@ -104,187 +209,50 @@ python evaluation/evaluate_three_model_pr_auc_oof.py \
   --folds 0,1,2,3,4 --workers 4
 ```
 
-Its aggregate metrics are written to `final_oof_pr_auc/summary.json`; the final
-probability-map weights are `0.375/0.400/0.225`. These are local 1,453-case
-five-fold OOF results. Scores on the organizer's hidden test set and the
-official leaderboard can only be obtained by submitting the Docker algorithm.
+The binary evaluation writes `summary.csv` and `summary.json`; the PR-AUC
+evaluation writes `summary.json`. Completed binary cases are recorded in
+`progress.jsonl`, so that run can safely resume after interruption.
 
-### 4. Package the trained checkpoints
+## Results
 
-```bash
-python docker/prepare_model.py \
-  --results-root "$ISLES26_ROOT/nnUNet_results" \
-  --output-root "$ISLES26_ROOT/model"
-python docker/validate_model.py --model-root "$ISLES26_ROOT/model"
-```
+Fusion weights and post-processing were selected only from five-fold
+out-of-fold predictions. A small preregistered four-model candidate set was
+evaluated first; after c09 was fixed, a conservative `5 x 3` component-filter
+grid was evaluated. The sanity-check cases were not used for model selection.
 
-The resulting model directory must contain `ensemble_config.json`,
-`model_manifest.json`, and the four five-fold nnU-Net result trees. To create
-the separate Grand Challenge model upload:
+Final aggregate results over all 1,453 OOF cases are:
 
-```bash
-tar -czvf algorithmmodel.tar.gz -C "$ISLES26_ROOT/model" .
-```
+| Output | Metric | Mean |
+|---|---|---:|
+| Binary mask | Dice | **0.666484** |
+| Binary mask | Lesion F1 | **0.616320** |
+| Binary mask | Lesion-count difference | **1.793531** |
+| Binary mask | Absolute-volume difference (mL) | **5.089944** |
+| Probability map | PR-AUC | **0.761344** |
 
-### 5. Build and test the Docker container
+The final probability weights improved mean PR-AUC by `0.001936` over equal
+three-model weights on the same OOF cases. These are internal OOF validation
+results, not scores from a hidden test set. Frozen aggregate search summaries
+and scope notes are available in [`results/`](results/README.md).
 
-Place one local test case in the following Grand Challenge-style layout:
-
-```text
-test-input/interf0/
-├── inputs.json
-├── stroke-metadata.json
-└── images/t1-brain-mri/case.mha
-```
-
-`inputs.json` must declare the `t1-brain-mri` and `stroke-metadata` socket
-slugs:
-
-```json
-[
-  {"socket": {"slug": "t1-brain-mri"}},
-  {"socket": {"slug": "stroke-metadata"}}
-]
-```
-
-`stroke-metadata.json` may be `{}` for a local smoke test. Then run:
-
-```bash
-cd docker
-./do_build.sh
-
-MODEL_DIR="$ISLES26_ROOT/model" \
-TEST_INPUT_DIR=/absolute/path/to/test-input \
-./do_test_run.sh
-
-# After a successful test, create the container archive for upload.
-./do_save.sh
-```
-
-Outputs are collected under `docker/test/output/interf0/`. The final container
-writes both `stroke-lesion-segmentation` and `lesion-probability-map`. See the
-longer packaging and configuration notes below for Grand Challenge submission.
-
-## Final inference configuration
-
-| Output | Models and family weights | Decision rule |
-|---|---|---|
-| Stroke lesion segmentation | ResEncM `0.31875`, DTK10 `0.31875`, MSL `0.2125`, ICI `0.15` | threshold `0.425`; keep each 26-connected component when volume is at least `300 mm3` **or** peak fused probability is at least `0.65` |
-| Lesion probability map | ResEncM `0.375`, DTK10 `0.400`, MSL `0.225` | continuous float32 map clipped to `[0, 1]`; no thresholding or component filtering |
-
-All four model families are inferred once. The ICI output contributes only to
-the binary branch. The exact implementation is in `docker/inference.py`, and a
-machine-readable copy of the calibration is in
-`configs/final_output_calibration.json`.
-
-## Repository layout
+## Implementation map
 
 ```text
 configs/                  frozen search and final calibration configurations
-docker/                   Grand Challenge invoke API, inference, build/test tools
-evaluation/               five-fold OOF fusion and post-processing evaluation
-reproducibility/          frozen nnU-Net plans, fingerprint and five-fold split
-results/                  aggregate OOF search summaries (no per-case data)
-training/data/            dataset conversion and MSL target construction
-training/jobs/            fold training/resume scripts
+inference/                model loading, five-fold fusion and local prediction
+evaluation/               OOF weight, threshold and post-processing evaluation
+training/data/            official-data conversion and MSL target construction
+training/jobs/            individual fold training/resume scripts
 training/nnunet_extensions/
-                          custom DTK10 and ICI nnU-Net training components
-environment.yml           Conda environment named isles (Python and pip)
-requirements-training.txt exact training environment used for the final models
+                          DTK10 and ICI objectives used by nnU-Net
+reproducibility/          frozen plans, fingerprint and exact five-fold split
+results/                  aggregate OOF experiment summaries
+environment.yml           Conda environment definition
+requirements-*.txt        pinned training and evaluation dependencies
 ```
-
-## Model families
-
-- **ResEncM**: `nnUNetTrainer` with `nnUNetResEncUNetMPlans` on Dataset004.
-- **DTK10**: `nnUNetTrainerDiceTopK10Loss` with `nnUNetPlans` on Dataset004.
-- **MSL**: standard trainer on Dataset005, whose targets split connected lesions
-  into four size classes; inference sums all foreground classes.
-- **ICI**: `nnUNetTrainerICILoss` with `nnUNetPlans` on Dataset004.
-
-The training setup used nnU-Net v2.8.0. Install the extension files under the
-matching paths in an nnU-Net checkout/environment before training:
-
-```text
-training/nnunet_extensions/nnUNetTrainerTopkLoss.py
-  -> nnunetv2/training/nnUNetTrainer/variants/loss/
-training/nnunet_extensions/nnUNetTrainerICILoss.py
-  -> nnunetv2/training/nnUNetTrainer/variants/loss/
-training/nnunet_extensions/ici_official/
-  -> nnunetv2/training/loss/ici_official/
-```
-
-Set `ISLES26_ROOT` to a work directory containing `nnUNet_raw`,
-`nnUNet_preprocessed`, and `nnUNet_results`. The job scripts also accept
-`NNUNET_TRAIN_BIN` (and, where relevant, `NNUNET_PREDICT_BIN`) so no user-specific
-paths are required.
-
-For a clean reproduction from the organizer-provided corrected training data,
-including environment creation, exact preprocessing metadata and all 20 training
-runs, follow [`training/README.md`](training/README.md). The repository freezes
-the exact five-fold split and plans used for the submitted models.
-
-## Evaluation protocol
-
-Fusion weights and post-processing were selected only with five-fold
-out-of-fold validation predictions. The final search was preregistered in two
-stages:
-
-1. Freeze and compare a small set of four-model weight/threshold candidates.
-2. Freeze c09, then compare a conservative `5 x 3` component-filter grid.
-
-Selection used repeated/five-fold cross-fitted per-case ranks across Dice,
-lesion F1, lesion-count difference, and absolute-volume difference. The sanity
-check cases were not used for selection. The probability-map weights were
-evaluated separately with the official PR-AUC implementation.
-
-The evaluation scripts expect the official metric code in
-`$ISLES26_OFFICIAL_METRICS` (or `$ISLES26_ROOT/isles26_official_metrics`). This
-dependency is not vendored here. Evaluation used organizer repository commit
-`e589d022953f797bdc6acc1ce9701f793dab295a`. Aggregate OOF results and their
-scope are documented in [`results/README.md`](results/README.md).
-
-## Package the model resource
-
-The model resource contains 20 slimmed `checkpoint_final.pth` files plus the
-nnU-Net plans and dataset metadata. Create it outside the repository:
-
-```bash
-python docker/prepare_model.py \
-  --results-root /path/to/nnUNet_results \
-  --output-root /path/to/model
-
-python docker/validate_model.py --model-root /path/to/model
-tar -czvf algorithmmodel.tar.gz -C /path/to/model .
-```
-
-The submitted model resource retained the earlier `0.30/0.30/0.30/0.10`
-identity and `200 mm3` legacy post-processing metadata in
-`ensemble_config.json`. The final c09 binary calibration (`300 mm3`) and the
-separate probability-map calibration are deliberately frozen in the container;
-`docker/inference.py` validates the compatible model identity before applying
-them.
-
-## Build and test the container
-
-Docker with NVIDIA Container Toolkit is required for GPU inference.
-
-```bash
-cd docker
-./do_build.sh
-
-MODEL_DIR=/path/to/model \
-TEST_INPUT_DIR=/path/to/test/input \
-TEST_OUTPUT_DIR=/path/to/test/output \
-./do_test_run.sh
-
-./do_save.sh
-```
-
-The container implements the Grand Challenge `invoke` API and writes both
-`stroke-lesion-segmentation` and `lesion-probability-map` outputs. 
 
 ## License
 
-Project code is released under Apache-2.0. The ICI training-loss source retains
-its bundled Apache-2.0 license. nnU-Net and other dependencies remain subject to
-their respective licenses.
+Project code is released under Apache-2.0. The bundled ICI loss source retains
+its Apache-2.0 license. nnU-Net and other dependencies remain subject to their
+respective licenses.
