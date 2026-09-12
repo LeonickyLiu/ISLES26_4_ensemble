@@ -33,36 +33,35 @@ iterations per epoch.
 
 ### Five-fold prediction and dual-output fusion
 
-For family \(m\), its probability is the average of the five fold models:
+For family $m$, its probability is the average of the five fold models:
 
-\[
-p_m(x)=\frac{1}{5}\sum_{f=0}^{4}p_{m,f}(x).
-\]
+$$
+p_m(x) = \frac{1}{5}\sum_{f=0}^{4} p_{m,f}(x).
+$$
 
 The binary-mask branch fuses all four families:
 
-\[
-p_{seg}=0.31875p_{ResEncM}+0.31875p_{DTK10}
-       +0.2125p_{MSL}+0.15p_{ICI}.
-\]
+$$
+p_{\mathrm{seg}} = 0.31875p_{\mathrm{ResEncM}} + 0.31875p_{\mathrm{DTK10}} + 0.2125p_{\mathrm{MSL}} + 0.15p_{\mathrm{ICI}}.
+$$
 
-It first thresholds \(p_{seg}\) at `0.425`. For every 26-connected component
-\(C\), the component is retained when either
+It first thresholds $p_{\mathrm{seg}}$ at `0.425`. For every 26-connected
+component $C$, the component is retained when either
 
-\[
+$$
 \operatorname{volume}(C)\geq300\;\mathrm{mm}^3
 \quad\text{or}\quad
-\max_{x\in C}p_{seg}(x)\geq0.65.
-\]
+\max_{x\in C}p_{\mathrm{seg}}(x)\geq0.65.
+$$
 
 This removes small low-confidence false positives without discarding small
 high-confidence lesions.
 
 The continuous probability-map branch excludes ICI and uses:
 
-\[
-p_{prob}=0.375p_{ResEncM}+0.400p_{DTK10}+0.225p_{MSL}.
-\]
+$$
+p_{\mathrm{prob}} = 0.375p_{\mathrm{ResEncM}} + 0.400p_{\mathrm{DTK10}} + 0.225p_{\mathrm{MSL}}.
+$$
 
 `p_prob` is clipped to `[0, 1]` and saved as `float32`; no threshold or
 connected-component filtering is applied. Each family is inferred only once,
